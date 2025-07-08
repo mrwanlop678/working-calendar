@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Working Calendar ประจำเดือนกรกฎาคม</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- html2canvas for downloading as image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #374151; /* Default text color for light mode */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* Dark Mode Styles */
+        html.dark body {
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+        }
+        html.dark .max-w-4xl {
+            background-color: #2d3748; /* Darker card background */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        html.dark h1, html.dark h2, html.dark h3 {
+            color: #f7fafc; /* Lighter headings */
+        }
+        html.dark .search-container input {
+            background-color: #4a5568;
+            border-color: #2d3748;
+            color: #e2e8f0;
+        }
+        html.dark .search-container input::placeholder {
+            color: #a0aec0;
+        }
+        html.dark .day-cell {
+            background-color: #4a5568;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        html.dark .day-cell.empty-cell {
+            background-color: #2d3748;
+        }
+        html.dark .day-cell:hover {
+            background-color: #5a6578;
+        }
+        html.dark .day-number {
+            color: #f7fafc;
+        }
+        html.dark .calendar-grid {
+            background-color: #2d3748;
+        }
+        html.dark .text-gray-600 { /* Day headers */
+            color: #cbd5e0;
+        }
+        html.dark .employee-info-label {
+            color: #cbd5e0;
+        }
+        html.dark .text-gray-700 {
+            color: #e2e8f0;
+        }
+        html.dark .text-gray-800 {
+            color: #f7fafc;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 4px;
+        }
+        .day-cell {
+            min-height: 80px; /* Adjust height for better visual */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease-in-out, background-color 0.3s ease;
+            background-color: #ffffff; /* Default background for day cells */
+        }
+        .day-cell.empty-cell {
+            background-color: #f3f4f6; /* Lighter background for empty cells */
+        }
+        .day-cell:hover {
+            transform: translateY(-2px);
+        }
+        .day-number {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 4px;
+            color: #4b5563; /* Default text color for day numbers */
+        }
+        .shift-info {
+            font-size: 0.9em;
+            padding: 4px 8px;
+            border-radius: 9999px; /* Full rounded corners */
+            font-weight: 600;
+            color: #fff;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Shift Colors */
+        .shift-E01 { background-color: #22c55e; /* Green */ }
+        .shift-A03 { background-color: #3b82f6; /* Blue */ }
+        .shift-A01 { background-color: #f97316; /* Orange */ }
+        /* Holiday shifts will have their background set by .is-holiday-cell */
+        .shift-HOL, .shift-อาสาฬ, .shift-วันเฉลิม, .shift-วันเฉลิมพระชนพรรษาร.10, .shift-วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสุทิดา {
+            background-color: transparent; /* Make background transparent to show parent cell's color */
+            color: #fff; /* White text for holiday shifts */
+            border: 1px solid rgba(255,255,255,0.5); /* Optional: subtle border for shift info */
+        }
+        .shift-พักร้อน { background-color: #d1d5db; /* Light Gray */ color: #374151;} /* Darker text for light background */
+        .shift-J01, .shift-C01, .shift-B02 { background-color: #9ca3af; color: #fff; } /* Default gray for other shifts */
+        .shift-SICK { background-color: #fca5a5; color: #b91c1c; } /* Light red for SICK, dark red text */
+        .shift-ยักษ์, .shift-ลาคลอด { background-color: #60a5fa; color: #fff; } /* A general blue for other specific shifts */
+
+        /* Holiday Cell Styling */
+        .day-cell.is-holiday-cell {
+            background-color: #ef4444; /* Red background for the entire cell */
+        }
+        .day-cell.is-holiday-cell .day-number {
+            color: #fff; /* White text for day number on red background */
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #4b5563;
+        }
+        html.dark .loading-indicator {
+            color: #cbd5e0;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .search-container input {
+            flex-grow: 1;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1em;
+            min-width: 150px;
+            background-color: #ffffff;
+            color: #374151;
+        }
+        .search-container input::placeholder {
+            color: #9ca3af;
+        }
+        .search-container button {
+            padding: 10px 16px;
+            background-color: #4f46e5;
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .search-container button:hover {
+            background-color: #4338ca;
+            transform: translateY(-1px);
+        }
+        .search-container button:active {
+            transform: translateY(0);
+        }
+        .download-button {
+            background-color: #10b981; /* Green for download */
+            margin-top: 24px;
+            width: 100%;
+            padding: 12px 0;
+            border-radius: 8px;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .download-button:hover {
+            background-color: #059669;
+            transform: translateY(-1px);
+        }
+        .download-button:active {
+            transform: translateY(0);
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            text-align: center;
+            max-width: 90%;
+            width: 350px;
+        }
+        html.dark .message-box {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 999;
+        }
+        .employee-info-label {
+            font-weight: 600; /* Make labels bold */
+        }
+        .controls-container {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .control-button {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            background-color: #e5e7eb; /* Light gray for controls */
+            color: #4b5563;
+        }
+        .control-button.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        html.dark .control-button {
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+        html.dark .control-button.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+        <div class="controls-container">
+            <button id="lang-en" class="control-button" data-lang="en">EN</button>
+            <button id="lang-th" class="control-button active" data-lang="th">TH</button>
+            <button id="theme-toggle" class="control-button" data-key="themeToggle">โหมดมืด</button>
+        </div>
+
+        <h1 id="main-title" class="text-3xl sm:text-4xl font-bold text-center text-gray-800 mb-2" data-key="mainTitle">ตารางงาน</h1>
+        <p id="subtitle" class="text-lg text-center text-gray-600 mb-6" data-key="subtitle">ประจำเดือนกรกฎาคม 2568</p>
+
+        <div class="search-container">
+            <input type="text" id="nickname-search" placeholder="ค้นหาด้วยชื่อเล่น (เช่น ต้น, อ้อม)" data-key="searchPlaceholder" class="flex-grow">
+            <button id="search-button" data-key="searchButton">ค้นหา</button>
+        </div>
+
+        <h2 id="employee-name-header" class="text-xl sm:text-2xl font-semibold text-gray-700 mb-4"></h2>
+
+        <div id="employee-info" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-gray-700">
+            <!-- Employee info will be loaded here by JavaScript -->
+            <div class="loading-indicator col-span-full" data-key="initialSearchPrompt">โปรดป้อนชื่อเล่นเพื่อค้นหาตารางงาน</div>
+        </div>
+
+        <h3 id="legend-title" class="text-lg sm:text-xl font-semibold text-gray-700 mb-4" data-key="legendTitle">คำอธิบายกะงาน:</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8 text-sm">
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-green-500 mr-2"></span> <span data-key="shiftE01">กะเช้า (E01)</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-blue-500 mr-2"></span> <span data-key="shiftA03">กะบ่าย (A03)</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-orange-500 mr-2"></span> <span data-key="shiftA01">โอที (A01)</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-red-500 mr-2"></span> <span data-key="shiftHoliday">วันหยุด (HOL) / วันหยุดพิเศษ</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-gray-400 mr-2"></span> <span data-key="shiftVacation">พักร้อน</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-gray-500 mr-2"></span> <span data-key="shiftOther">กะอื่นๆ (J01, C01, B02)</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-red-300 mr-2"></span> <span data-key="shiftSick">ลาป่วย (SICK)</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-blue-400 mr-2"></span> <span data-key="shiftSpecial">กะพิเศษ (ยักษ์, ลาคลอด)</span>
+            </div>
+        </div>
+
+        <h3 id="calendar-section-title" class="text-lg sm:text-xl font-semibold text-gray-700 mb-4" data-key="calendarSectionTitle">รายละเอียดกะงานประจำวัน:</h3>
+        <div id="calendar-container" class="calendar-grid bg-gray-50 p-2 rounded-lg">
+            <!-- Day Headers -->
+            <div class="text-center font-bold text-gray-600 py-2" data-key="daySun">อาทิตย์</div>
+            <div class="text-center font-bold text-gray-600 py-2" data-key="dayMon">จันทร์</div>
+            <div class="text-center font-bold text-gray-600 py-2" data-key="dayTue">อังคาร</div>
+            <div class="text-center font-bold text-gray-600 py-2" data-key="dayWed">พุธ</div>
+            <div class="text-center font-bold text-gray-600 py-2" data-key="dayThu">พฤหัสบดี</div>
+            <div class="text-center font-bold text-gray-600 py-2" data-key="dayFri">ศุกร์</div>
+            <div class="text-center font-bold text-gray-600 py-2" data-key="daySat">เสาร์</div>
+
+            <!-- Calendar Days will be loaded here by JavaScript -->
+            <div class="loading-indicator col-span-full" data-key="initialCalendarPrompt">โปรดป้อนชื่อเล่นเพื่อค้นหาตารางงาน</div>
+        </div>
+
+        <button id="download-button" class="download-button" data-key="downloadButton">ดาวน์โหลดรูปภาพปฏิทิน</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Google Sheet configuration
+            const SPREADSHEET_ID = '12wTXpyTWC5Zh2tF9dVyh-G6lhGawwq2eKf9QbexoeGc';
+            const GID = '1944075747'; // This GID corresponds to the "ตารางงาน" sheet
+            const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`;
+
+            // DOM elements
+            const langEnButton = document.getElementById('lang-en');
+            const langThButton = document.getElementById('lang-th');
+            const themeToggleButton = document.getElementById('theme-toggle');
+            const nicknameSearchInput = document.getElementById('nickname-search');
+            const searchButton = document.getElementById('search-button');
+            const downloadButton = document.getElementById('download-button');
+            const calendarContainer = document.getElementById('calendar-container');
+            const employeeInfoDiv = document.getElementById('employee-info');
+            const employeeNameHeader = document.getElementById('employee-name-header');
+            const pageTitle = document.getElementById('page-title');
+
+            let allEmployeesData = []; // To store all parsed employee data
+            let currentLanguage = localStorage.getItem('calendarLang') || 'th';
+            let currentTheme = localStorage.getItem('calendarTheme') || 'light';
+
+            // Define holiday shift codes
+            const holidayShiftCodes = [
+                'HOL', 'อาสาฬ', 'วันเฉลิม', 'วันเฉลิมพระชนพรรษาร.10', 'วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสุทิดา'
+            ];
+
+            // Shift mapping for display and styling
+            const shiftDescriptions = {
+                'E01': 'กะเช้า',
+                'A03': 'กะบ่าย',
+                'A01': 'โอที',
+                'HOL': 'วันหยุด',
+                'พักร้อน': 'พักร้อน',
+                'อาสาฬ': 'อาสาฬหบูชา',
+                'วันเฉลิม': 'วันเฉลิม',
+                'วันเฉลิมพระชนพรรษาร.10': 'วันเฉลิมพระชนมพรรษา ร.10',
+                'วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสุทิดา': 'วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสุทิดา',
+                'J01': 'กะ J01',
+                'C01': 'กะ C01',
+                'B02': 'กะ B02',
+                'SICK': 'ลาป่วย',
+                'ยักษ์': 'กะพิเศษ (ยักษ์)',
+                'ลาคลอด': 'กะพิเศษ (ลาคลอด)',
+                // Add any other shifts found in your sheet here
+            };
+
+
+            // Translation mapping for various UI elements
+            const translations = {
+                en: {
+                    mainTitle: "Working Calendar",
+                    subtitle: "July 2025 Schedule",
+                    searchPlaceholder: "Search by nickname (e.g., Ton, Aom)",
+                    searchButton: "Search",
+                    initialSearchPrompt: "Please enter a nickname to search for a schedule.",
+                    legendTitle: "Shift Descriptions:",
+                    shiftE01: "Morning Shift (E01)",
+                    shiftA03: "Afternoon Shift (A03)",
+                    shiftA01: "Overtime (A01)",
+                    shiftHoliday: "Holiday (HOL) / Special Holiday",
+                    shiftVacation: "Vacation",
+                    shiftOther: "Other Shifts (J01, C01, B02)",
+                    shiftSick: "Sick Leave (SICK)",
+                    shiftSpecial: "Special Shift (Yak, Maternity)",
+                    calendarSectionTitle: "Daily Shift Details:",
+                    daySun: "Sun",
+                    dayMon: "Mon",
+                    dayTue: "Tue",
+                    dayWed: "Wed",
+                    dayThu: "Thu",
+                    dayFri: "Fri",
+                    daySat: "Sat",
+                    downloadButton: "Download Calendar Image",
+                    themeToggle: "Dark Mode",
+                    loadingAllEmployees: "Loading all employee data...",
+                    loadingAllSchedules: "Loading all schedules...",
+                    errorLoadingSchedule: "Could not load schedule. Please try again later.",
+                    errorLoadingEmployeeInfo: "Could not load employee information.",
+                    errorNoValidData: "No valid schedule data found.",
+                    errorNoEmployeeFound: "No employee found with that nickname.",
+                    errorNoCalendarContent: "No calendar content to download.",
+                    generatingImage: "Generating image...",
+                    downloadSuccess: "Download successful!",
+                    errorGeneratingImage: "Error generating image:",
+                    enterNicknamePrompt: "Please enter a nickname to search.",
+                    employeeInfoNotFound: "Employee data not found.",
+                    scheduleNotFound: "Schedule data not found.",
+                    errorFetchingData: "An error occurred while fetching schedule data:",
+                    employeeNotFoundInSheet: "No data found for this employee in the sheet.",
+                    nameLabel: "Full Name:",
+                    nicknameLabel: "Nickname:",
+                    phoneLabel: "Phone:",
+                    branchLabel: "Branch:",
+                    branchCodeLabel: "Branch Code:",
+                    locationCodeLabel: "Location Code:"
+                },
+                th: {
+                    mainTitle: "ตารางงาน",
+                    subtitle: "ประจำเดือนกรกฎาคม 2568",
+                    searchPlaceholder: "ค้นหาด้วยชื่อเล่น (เช่น ต้น, อ้อม)",
+                    searchButton: "ค้นหา",
+                    initialSearchPrompt: "โปรดป้อนชื่อเล่นเพื่อค้นหาตารางงาน",
+                    legendTitle: "คำอธิบายกะงาน:",
+                    shiftE01: "กะเช้า (E01)",
+                    shiftA03: "กะบ่าย (A03)",
+                    shiftA01: "โอที (A01)",
+                    shiftHoliday: "วันหยุด (HOL) / วันหยุดพิเศษ",
+                    shiftVacation: "พักร้อน",
+                    shiftOther: "กะอื่นๆ (J01, C01, B02)",
+                    shiftSick: "ลาป่วย (SICK)",
+                    shiftSpecial: "กะพิเศษ (ยักษ์, ลาคลอด)",
+                    calendarSectionTitle: "รายละเอียดกะงานประจำวัน:",
+                    daySun: "อาทิตย์",
+                    dayMon: "จันทร์",
+                    dayTue: "อังคาร",
+                    dayWed: "พุธ",
+                    dayThu: "พฤหัสบดี",
+                    dayFri: "ศุกร์",
+                    daySat: "เสาร์",
+                    downloadButton: "ดาวน์โหลดรูปภาพปฏิทิน",
+                    themeToggle: "โหมดมืด",
+                    loadingAllEmployees: "กำลังโหลดข้อมูลพนักงานทั้งหมด...",
+                    loadingAllSchedules: "กำลังโหลดตารางงานทั้งหมด...",
+                    errorLoadingSchedule: "ไม่สามารถโหลดตารางงานได้ โปรดลองอีกครั้งในภายหลัง",
+                    errorLoadingEmployeeInfo: "ไม่สามารถโหลดข้อมูลพนักงานได้",
+                    errorNoValidData: "ไม่พบข้อมูลตารางงานที่ถูกต้อง",
+                    errorNoEmployeeFound: "ไม่พบพนักงานที่มีชื่อเล่นดังกล่าว",
+                    errorNoCalendarContent: "ไม่พบเนื้อหาปฏิทินที่จะดาวน์โหลด",
+                    generatingImage: "กำลังสร้างรูปภาพ...",
+                    downloadSuccess: "ดาวน์โหลดสำเร็จ!",
+                    errorGeneratingImage: "เกิดข้อผิดพลาดในการสร้างรูปภาพ:",
+                    enterNicknamePrompt: "โปรดป้อนชื่อเล่นที่ต้องการค้นหา",
+                    employeeInfoNotFound: "ไม่พบข้อมูลพนักงาน",
+                    scheduleNotFound: "ไม่พบข้อมูลตารางงาน",
+                    errorFetchingData: "เกิดข้อผิดพลาดในการโหลดข้อมูลตารางงาน:",
+                    employeeNotFoundInSheet: "ไม่พบข้อมูลสำหรับพนักงานคนนี้ในชีท",
+                    nameLabel: "ชื่อ-นามสกุล:",
+                    nicknameLabel: "ชื่อเล่น:",
+                    phoneLabel: "เบอร์ติดต่อพนักงาน:",
+                    branchLabel: "สาขา:",
+                    branchCodeLabel: "รหัสสาขา:",
+                    locationCodeLabel: "LOCATION CODE:"
+                }
+            };
+
+            // Function to apply translations
+            function applyLanguage(lang) {
+                currentLanguage = lang;
+                document.documentElement.lang = lang;
+                localStorage.setItem('calendarLang', lang);
+
+                // Update language buttons active state
+                langEnButton.classList.toggle('active', lang === 'en');
+                langThButton.classList.toggle('active', lang === 'th');
+
+                // Update text content based on data-key attributes
+                document.querySelectorAll('[data-key]').forEach(element => {
+                    const key = element.getAttribute('data-key');
+                    if (translations[lang][key]) {
+                        if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
+                            element.placeholder = translations[lang][key];
+                        } else {
+                            element.textContent = translations[lang][key];
+                        }
+                    }
+                });
+
+                // Special handling for theme toggle button text
+                themeToggleButton.textContent = translations[lang].themeToggle;
+
+                // Re-render current employee info and calendar to apply language to dynamic content
+                const currentNickname = nicknameSearchInput.value.toLowerCase().trim();
+                if (currentNickname && allEmployeesData.length > 0) {
+                    const employee = allEmployeesData.find(emp => emp['ชื่อเล่น'] === currentNickname);
+                    if (employee) {
+                        renderCalendarForEmployee(employee);
+                    }
+                } else {
+                    // Update initial prompts if no search performed yet
+                    employeeInfoDiv.innerHTML = `<div class="loading-indicator col-span-full" data-key="initialSearchPrompt">${translations[lang].initialSearchPrompt}</div>`;
+                    const calendarLoadingIndicator = calendarContainer.querySelector('.loading-indicator');
+                    if (calendarLoadingIndicator) {
+                        calendarLoadingIndicator.textContent = translations[lang].initialCalendarPrompt;
+                    }
+                }
+            }
+
+            // Function to apply theme (light/dark)
+            function applyTheme(theme) {
+                currentTheme = theme;
+                localStorage.setItem('calendarTheme', theme);
+                document.documentElement.classList.toggle('dark', theme === 'dark');
+                themeToggleButton.textContent = translations[currentLanguage][theme === 'dark' ? 'themeToggleLight' : 'themeToggle'];
+                if (theme === 'dark') {
+                    themeToggleButton.textContent = translations[currentLanguage].themeToggleLight || "Light Mode";
+                } else {
+                    themeToggleButton.textContent = translations[currentLanguage].themeToggle || "Dark Mode";
+                }
+            }
+            // Update themeToggle text in translations
+            translations.en.themeToggleLight = "Light Mode";
+            translations.th.themeToggleLight = "โหมดสว่าง";
+
+
+            // Function to show a custom message box (replaces alert)
+            function showMessage(message, type = 'info') {
+                const existingOverlay = document.querySelector('.overlay');
+                if (existingOverlay) existingOverlay.remove();
+
+                const overlay = document.createElement('div');
+                overlay.className = 'overlay';
+                overlay.onclick = () => overlay.remove(); // Close on overlay click
+
+                const messageBox = document.createElement('div');
+                messageBox.className = 'message-box';
+                messageBox.innerHTML = `
+                    <p class="text-lg font-semibold mb-4 ${type === 'error' ? 'text-red-600' : 'text-gray-800'}">${message}</p>
+                    <button class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600" onclick="this.parentNode.parentNode.remove()">ปิด</button>
+                `;
+                overlay.appendChild(messageBox);
+                document.body.appendChild(overlay);
+            }
+
+            // Function to format phone number to 000-000-0000
+            function formatPhoneNumber(phoneNumber) {
+                if (!phoneNumber) return 'N/A';
+                const digits = phoneNumber.replace(/\D/g, ''); // Remove all non-digits
+                if (digits.length === 10) {
+                    return `${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6, 10)}`;
+                } else if (digits.length === 9) { // Handle 9-digit numbers like 0xx-xxx-xxxx
+                    return `${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6, 9)}`;
+                }
+                return phoneNumber; // Return as is if not 9 or 10 digits
+            }
+
+            // Function to parse CSV text into an array of employee data
+            function parseCsvData(csvText) {
+                const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                if (lines.length < 2) {
+                    throw new Error(translations[currentLanguage].errorNoValidData);
+                }
+
+                const employees = [];
+                for (let i = 2; i < lines.length; i++) { // Start from the third row (index 2) for data
+                    // Use a more robust regex to split by comma, ignoring commas inside double quotes
+                    const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.trim().replace(/"/g, ''));
+
+                    // Ensure basic data (name and nickname) exists and row has enough columns
+                    if (row.length > 7 && row[6] && row[7]) {
+                        const employee = {
+                            'LOCATION CODE': row[0] || '',
+                            'รหัสสาขา': row[1] || '',
+                            'สาขา': row[2] || '',
+                            'เบอร์ติดต่อพนักงาน': row[3] || '', // Keep raw for now, format in render
+                            'รหัส ASC': row[4] || '',
+                            'รหัสพนักงาน': row[5] || '',
+                            'ชื่อ-นามสกุล': row[6] || '',
+                            'ชื่อเล่น': row[7] ? row[7].toLowerCase() : '', // Store nickname in lowercase for search
+                            'Description': row[8] || '',
+                            'shifts': []
+                        };
+                        // Shifts start from column J (index 9)
+                        for (let j = 9; j < row.length; j++) {
+                            employee.shifts.push(row[j] || '');
+                        }
+                        employees.push(employee);
+                    }
+                }
+                return employees;
+            }
+
+            // Function to render the calendar for a specific employee
+            function renderCalendarForEmployee(employeeData) {
+                // Clear previous calendar and info
+                calendarContainer.innerHTML = `
+                    <div class="text-center font-bold text-gray-600 py-2" data-key="daySun">${translations[currentLanguage].daySun}</div>
+                    <div class="text-center font-bold text-gray-600 py-2" data-key="dayMon">${translations[currentLanguage].dayMon}</div>
+                    <div class="text-center font-bold text-gray-600 py-2" data-key="dayTue">${translations[currentLanguage].dayTue}</div>
+                    <div class="text-center font-bold text-gray-600 py-2" data-key="dayWed">${translations[currentLanguage].dayWed}</div>
+                    <div class="text-center font-bold text-gray-600 py-2" data-key="dayThu">${translations[currentLanguage].dayThu}</div>
+                    <div class="text-center font-bold text-gray-600 py-2" data-key="dayFri">${translations[currentLanguage].dayFri}</div>
+                    <div class="text-center font-bold text-gray-600 py-2" data-key="daySat">${translations[currentLanguage].daySat}</div>
+                `;
+
+                if (!employeeData || !employeeData['ชื่อ-นามสกุล']) {
+                    employeeInfoDiv.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].employeeInfoNotFound}</div>`;
+                    employeeNameHeader.textContent = '';
+                    return;
+                }
+
+                // Populate employee info
+                const formattedPhoneNumber = formatPhoneNumber(employeeData['เบอร์ติดต่อพนักงาน']);
+                const phoneNumberLink = employeeData['เบอร์ติดต่อพนักงาน'] ? `<a href="tel:${employeeData['เบอร์ติดต่อพนักงาน'].replace(/\D/g, '')}" class="text-blue-600 hover:underline">${formattedPhoneNumber}</a>` : 'N/A';
+
+                employeeNameHeader.textContent = `${translations[currentLanguage].mainTitle} ${employeeData['ชื่อ-นามสกุล']}`;
+                employeeInfoDiv.innerHTML = `
+                    <div>
+                        <p><span class="employee-info-label">${translations[currentLanguage].nameLabel}</span> ${employeeData['ชื่อ-นามสกุล']}</p>
+                        <p><span class="employee-info-label">${translations[currentLanguage].nicknameLabel}</span> ${employeeData['ชื่อเล่น']}</p>
+                        <p><span class="employee-info-label">${translations[currentLanguage].phoneLabel}</span> ${phoneNumberLink}</p>
+                    </div>
+                    <div>
+                        <p><span class="employee-info-label">${translations[currentLanguage].branchLabel}</span> ${employeeData['สาขา']}</p>
+                        <p><span class="employee-info-label">${translations[currentLanguage].branchCodeLabel}</span> ${employeeData['รหัสสาขา']}</p>
+                        <p><span class="employee-info-label">${translations[currentLanguage].locationCodeLabel}</span> ${employeeData['LOCATION CODE']}</p>
+                    </div>
+                `;
+
+                // July 2025 starts on a Tuesday (day index 2: Sunday=0, Monday=1, Tuesday=2)
+                const firstDayOfMonth = new Date('2025-07-01');
+                const startDayOfWeek = firstDayOfMonth.getDay(); // 0 for Sunday, 1 for Monday, etc.
+
+                // Add empty cells for days before the 1st of the month
+                for (let i = 0; i < startDayOfWeek; i++) {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.className = 'day-cell empty-cell';
+                    calendarContainer.appendChild(emptyCell);
+                }
+
+                // Render days 1-31
+                for (let day = 1; day <= 31; day++) {
+                    const dayCell = document.createElement('div');
+
+                    const shiftCode = employeeData.shifts[day - 1] ? employeeData.shifts[day - 1].trim() : '';
+                    const isHolidayShift = holidayShiftCodes.includes(shiftCode);
+
+                    let className = 'day-cell';
+                    if (isHolidayShift) {
+                        className += ' is-holiday-cell'; // Apply red background and white text for day number
+                    } else {
+                        // Default white background for non-holiday cells, including weekends
+                        className += ' bg-white hover:bg-gray-50';
+                    }
+                    dayCell.className = className;
+
+                    const dayNumberSpan = document.createElement('span');
+                    dayNumberSpan.className = 'day-number';
+                    dayNumberSpan.textContent = day;
+                    dayCell.appendChild(dayNumberSpan);
+
+                    const shiftDescription = shiftDescriptions[shiftCode] || shiftCode; // Use code if description not found
+
+                    const shiftInfoSpan = document.createElement('span');
+                    // Clean class name for CSS (e.g., 'วันเฉลิมพระชนพรรษาร.10' becomes 'shift-วันเฉลิมพระชนพรรษาร10')
+                    shiftInfoSpan.className = `shift-info shift-${shiftCode.replace(/[^a-zA-Z0-9]/g, '')}`;
+                    shiftInfoSpan.textContent = `${shiftCode} (${shiftDescription})`;
+                    dayCell.appendChild(shiftInfoSpan);
+
+                    calendarContainer.appendChild(dayCell);
+                }
+            }
+
+            // Function to fetch all data from Google Sheet
+            async function fetchAllScheduleData() {
+                try {
+                    employeeInfoDiv.innerHTML = `<div class="loading-indicator col-span-full">${translations[currentLanguage].loadingAllEmployees}</div>`;
+                    calendarContainer.innerHTML = `<div class="loading-indicator col-span-full">${translations[currentLanguage].loadingAllSchedules}</div>`;
+
+                    const response = await fetch(CSV_URL);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const csvText = await response.text();
+                    allEmployeesData = parseCsvData(csvText);
+
+                    // Initially display the schedule for "วรรณลภย์ สายโคกสูง" or the first employee
+                    const initialEmployee = allEmployeesData.find(emp => emp['ชื่อเล่น'] === 'ต้น');
+                    if (initialEmployee) {
+                        renderCalendarForEmployee(initialEmployee);
+                        nicknameSearchInput.value = initialEmployee['ชื่อเล่น']; // Pre-fill search with initial employee's nickname
+                    } else if (allEmployeesData.length > 0) {
+                        renderCalendarForEmployee(allEmployeesData[0]);
+                        nicknameSearchInput.value = allEmployeesData[0]['ชื่อเล่น'];
+                    } else {
+                        employeeInfoDiv.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].employeeNotFoundInSheet}</div>`;
+                        calendarContainer.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].scheduleNotFound}</div>`;
+                    }
+
+                } catch (error) {
+                    console.error('Error fetching all schedule data:', error);
+                    calendarContainer.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].errorLoadingSchedule}</div>`;
+                    employeeInfoDiv.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].errorLoadingEmployeeInfo}</div>`;
+                    showMessage(`${translations[currentLanguage].errorFetchingData} ${error.message}`, 'error');
+                }
+            }
+
+            // Event listener for search button
+            searchButton.addEventListener('click', () => {
+                const searchTerm = nicknameSearchInput.value.toLowerCase().trim();
+                if (searchTerm) {
+                    const foundEmployee = allEmployeesData.find(emp => emp['ชื่อเล่น'] === searchTerm);
+                    if (foundEmployee) {
+                        renderCalendarForEmployee(foundEmployee);
+                    } else {
+                        showMessage(`${translations[currentLanguage].errorNoEmployeeFound} "${nicknameSearchInput.value}"`, 'info');
+                        employeeInfoDiv.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].employeeInfoNotFound}</div>`;
+                        calendarContainer.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].scheduleNotFound}</div>`;
+                        employeeNameHeader.textContent = '';
+                    }
+                } else {
+                    showMessage(translations[currentLanguage].enterNicknamePrompt, 'info');
+                }
+            });
+
+            // Event listener for download button
+            downloadButton.addEventListener('click', () => {
+                const calendarDiv = document.querySelector('.max-w-4xl.mx-auto'); // Target the main content div
+                if (!calendarDiv) {
+                    showMessage(translations[currentLanguage].errorNoCalendarContent, 'error');
+                    return;
+                }
+
+                // Show a loading message
+                showMessage(translations[currentLanguage].generatingImage, 'info');
+
+                html2canvas(calendarDiv, {
+                    scale: 2, // Increase scale for better resolution
+                    logging: false, // Disable logging for cleaner console
+                    useCORS: true // Important for images loaded from external sources (if any)
+                }).then(canvas => {
+                    // Convert canvas to image data URL
+                    const imageDataURL = canvas.toDataURL('image/png');
+
+                    // Create a temporary link element to trigger download
+                    const link = document.createElement('a');
+                    link.href = imageDataURL;
+                    link.download = `working_calendar_${employeeNameHeader.textContent.replace(/[^a-zA-Z0-9_]/g, '')}_กรกฎาคม_2568.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    // Remove loading message
+                    const existingOverlay = document.querySelector('.overlay');
+                    if (existingOverlay) existingOverlay.remove();
+                    showMessage(translations[currentLanguage].downloadSuccess, 'info');
+
+                }).catch(error => {
+                    console.error('Error generating image:', error);
+                    const existingOverlay = document.querySelector('.overlay');
+                    if (existingOverlay) existingOverlay.remove();
+                    showMessage(`${translations[currentLanguage].errorGeneratingImage} ${error.message}`, 'error');
+                });
+            });
+
+            // Language toggle event listeners
+            langEnButton.addEventListener('click', () => applyLanguage('en'));
+            langThButton.addEventListener('click', () => applyLanguage('th'));
+
+            // Theme toggle event listener
+            themeToggleButton.addEventListener('click', () => {
+                applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+            });
+
+            // Initial setup: apply saved language and theme, then fetch data
+            applyLanguage(currentLanguage);
+            applyTheme(currentTheme);
+            fetchAllScheduleData();
+        });
+    </script>
+</body>
+</html>
