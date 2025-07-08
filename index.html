@@ -257,8 +257,7 @@
 <body class="p-4 sm:p-8">
     <div class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-lg">
         <div class="controls-container">
-            <button id="lang-en" class="control-button" data-lang="en">EN</button>
-            <button id="lang-th" class="control-button active" data-lang="th">TH</button>
+            <button id="lang-toggle" class="control-button" data-key="langToggle">EN/TH</button>
             <button id="theme-toggle" class="control-button" data-key="themeToggle">โหมดมืด</button>
         </div>
 
@@ -331,8 +330,7 @@
             const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`;
 
             // DOM elements
-            const langEnButton = document.getElementById('lang-en');
-            const langThButton = document.getElementById('lang-th');
+            const langToggleButton = document.getElementById('lang-toggle'); // Changed to single toggle
             const themeToggleButton = document.getElementById('theme-toggle');
             const nicknameSearchInput = document.getElementById('nickname-search');
             const searchButton = document.getElementById('search-button');
@@ -399,6 +397,7 @@
                     daySat: "Sat",
                     downloadButton: "Download Calendar Image",
                     themeToggle: "Dark Mode",
+                    langToggle: "TH", // Text for the language toggle button
                     loadingAllEmployees: "Loading all employee data...",
                     loadingAllSchedules: "Loading all schedules...",
                     errorLoadingSchedule: "Could not load schedule. Please try again later.",
@@ -419,7 +418,8 @@
                     phoneLabel: "Phone:",
                     branchLabel: "Branch:",
                     branchCodeLabel: "Branch Code:",
-                    locationCodeLabel: "Location Code:"
+                    locationCodeLabel: "Location Code:",
+                    themeToggleLight: "Light Mode" // Added for theme toggle text
                 },
                 th: {
                     mainTitle: "ตารางงาน",
@@ -446,6 +446,7 @@
                     daySat: "เสาร์",
                     downloadButton: "ดาวน์โหลดรูปภาพปฏิทิน",
                     themeToggle: "โหมดมืด",
+                    langToggle: "EN", // Text for the language toggle button
                     loadingAllEmployees: "กำลังโหลดข้อมูลพนักงานทั้งหมด...",
                     loadingAllSchedules: "กำลังโหลดตารางงานทั้งหมด...",
                     errorLoadingSchedule: "ไม่สามารถโหลดตารางงานได้ โปรดลองอีกครั้งในภายหลัง",
@@ -466,7 +467,8 @@
                     phoneLabel: "เบอร์ติดต่อพนักงาน:",
                     branchLabel: "สาขา:",
                     branchCodeLabel: "รหัสสาขา:",
-                    locationCodeLabel: "LOCATION CODE:"
+                    locationCodeLabel: "LOCATION CODE:",
+                    themeToggleLight: "โหมดสว่าง" // Added for theme toggle text
                 }
             };
 
@@ -475,10 +477,6 @@
                 currentLanguage = lang;
                 document.documentElement.lang = lang;
                 localStorage.setItem('calendarLang', lang);
-
-                // Update language buttons active state
-                langEnButton.classList.toggle('active', lang === 'en');
-                langThButton.classList.toggle('active', lang === 'th');
 
                 // Update text content based on data-key attributes
                 document.querySelectorAll('[data-key]').forEach(element => {
@@ -492,8 +490,8 @@
                     }
                 });
 
-                // Special handling for theme toggle button text
-                themeToggleButton.textContent = translations[lang].themeToggle;
+                // Update language toggle button text
+                langToggleButton.textContent = translations[lang].langToggle;
 
                 // Re-render current employee info and calendar to apply language to dynamic content
                 const currentNickname = nicknameSearchInput.value.toLowerCase().trim();
@@ -518,16 +516,7 @@
                 localStorage.setItem('calendarTheme', theme);
                 document.documentElement.classList.toggle('dark', theme === 'dark');
                 themeToggleButton.textContent = translations[currentLanguage][theme === 'dark' ? 'themeToggleLight' : 'themeToggle'];
-                if (theme === 'dark') {
-                    themeToggleButton.textContent = translations[currentLanguage].themeToggleLight || "Light Mode";
-                } else {
-                    themeToggleButton.textContent = translations[currentLanguage].themeToggle || "Dark Mode";
-                }
             }
-            // Update themeToggle text in translations
-            translations.en.themeToggleLight = "Light Mode";
-            translations.th.themeToggleLight = "โหมดสว่าง";
-
 
             // Function to show a custom message box (replaces alert)
             function showMessage(message, type = 'info') {
@@ -769,9 +758,10 @@
                 });
             });
 
-            // Language toggle event listeners
-            langEnButton.addEventListener('click', () => applyLanguage('en'));
-            langThButton.addEventListener('click', () => applyLanguage('th'));
+            // Language toggle event listener
+            langToggleButton.addEventListener('click', () => {
+                applyLanguage(currentLanguage === 'th' ? 'en' : 'th');
+            });
 
             // Theme toggle event listener
             themeToggleButton.addEventListener('click', () => {
