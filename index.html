@@ -343,6 +343,7 @@
             let allEmployeesData = []; // To store all parsed employee data
             let currentLanguage = localStorage.getItem('calendarLang') || 'th';
             let currentTheme = localStorage.getItem('calendarTheme') || 'light';
+            let currentDisplayedEmployee = null; // To store the employee data currently rendered
 
             // Define holiday shift codes
             const holidayShiftCodes = [
@@ -419,7 +420,8 @@
                     branchLabel: "Branch:",
                     branchCodeLabel: "Branch Code:",
                     locationCodeLabel: "Location Code:",
-                    themeToggleLight: "Light Mode" // Added for theme toggle text
+                    themeToggleLight: "Light Mode", // Added for theme toggle text
+                    errorNoEmployeeToDownload: "No employee selected to download." // New translation
                 },
                 th: {
                     mainTitle: "ตารางงาน",
@@ -468,7 +470,8 @@
                     branchLabel: "สาขา:",
                     branchCodeLabel: "รหัสสาขา:",
                     locationCodeLabel: "LOCATION CODE:",
-                    themeToggleLight: "โหมดสว่าง" // Added for theme toggle text
+                    themeToggleLight: "โหมดสว่าง", // Added for theme toggle text
+                    errorNoEmployeeToDownload: "ยังไม่ได้เลือกพนักงานที่จะดาวน์โหลด" // New translation
                 }
             };
 
@@ -621,6 +624,7 @@
                         <p><span class="employee-info-label">${translations[currentLanguage].locationCodeLabel}</span> ${employeeData['LOCATION CODE']}</p>
                     </div>
                 `;
+                currentDisplayedEmployee = employeeData; // Store the currently displayed employee
 
                 // July 2025 starts on a Tuesday (day index 2: Sunday=0, Monday=1, Tuesday=2)
                 const firstDayOfMonth = new Date('2025-07-01');
@@ -718,45 +722,137 @@
                 }
             });
 
-            // Event listener for download button
-            downloadButton.addEventListener('click', () => {
-                const calendarDiv = document.querySelector('.max-w-4xl.mx-auto'); // Target the main content div
-                if (!calendarDiv) {
-                    showMessage(translations[currentLanguage].errorNoCalendarContent, 'error');
+            // New function for image generation
+            async function generateCalendarImage() {
+                if (!currentDisplayedEmployee) {
+                    showMessage(translations[currentLanguage].errorNoEmployeeToDownload, 'info');
                     return;
                 }
 
                 // Show a loading message
                 showMessage(translations[currentLanguage].generatingImage, 'info');
 
-                html2canvas(calendarDiv, {
-                    scale: 2, // Increase scale for better resolution
-                    logging: false, // Disable logging for cleaner console
-                    useCORS: true // Important for images loaded from external sources (if any)
-                }).then(canvas => {
-                    // Convert canvas to image data URL
-                    const imageDataURL = canvas.toDataURL('image/png');
+                // Create a temporary container for rendering the specific content for download
+                const tempDownloadContainer = document.createElement('div');
+                tempDownloadContainer.style.position = 'absolute';
+                tempDownloadContainer.style.left = '-9999px'; // Hide it off-screen
+                tempDownloadContainer.style.top = '-9999px';
+                tempDownloadContainer.style.width = '1200px'; // Fixed width for horizontal image, adjust as needed
+                tempDownloadContainer.style.padding = '30px'; // More padding for better visual
+                tempDownloadContainer.style.backgroundColor = currentTheme === 'dark' ? '#2d3748' : '#ffffff'; // Match current theme background
+                tempDownloadContainer.style.borderRadius = '12px';
+                tempDownloadContainer.style.fontFamily = 'Inter, sans-serif';
+                tempDownloadContainer.style.color = currentTheme === 'dark' ? '#e2e8f0' : '#374151'; // Match current theme text color
+                tempDownloadContainer.style.boxSizing = 'border-box'; // Include padding in width
 
-                    // Create a temporary link element to trigger download
+                // Add employee name header to the temporary container
+                const nameHeaderClone = document.createElement('h2');
+                nameHeaderClone.style.fontSize = '32px'; // Larger for image
+                nameHeaderClone.style.fontWeight = 'bold';
+                nameHeaderClone.style.textAlign = 'center';
+                nameHeaderClone.style.marginBottom = '25px';
+                nameHeaderClone.style.color = currentTheme === 'dark' ? '#f7fafc' : '#1f2937'; // Match heading color
+                nameHeaderClone.textContent = `${translations[currentLanguage].mainTitle} ${currentDisplayedEmployee['ชื่อ-นามสกุล']}`;
+                tempDownloadContainer.appendChild(nameHeaderClone);
+
+                // Clone the actual calendar grid (which holds the day cells)
+                const calendarGridToClone = document.getElementById('calendar-container');
+                const calendarGridClone = calendarGridToClone.cloneNode(true);
+
+                // Apply necessary styles to the cloned grid and its children for correct rendering in html2canvas
+                // html2canvas sometimes struggles with complex grid/flex layouts or dynamic styles if not explicitly set on the cloned elements.
+                calendarGridClone.style.display = 'grid';
+                calendarGridClone.style.gridTemplateColumns = 'repeat(7, minmax(0, 1fr))';
+                calendarGridClone.style.gap = '4px';
+                calendarGridClone.style.backgroundColor = currentTheme === 'dark' ? '#2d3748' : '#f9fafb';
+                calendarGridClone.style.padding = '8px';
+                calendarGridClone.style.borderRadius = '8px';
+                calendarGridClone.style.boxShadow = 'none'; // Remove original shadow if present
+
+                // Ensure day cell styles are correctly applied to the cloned elements
+                calendarGridClone.querySelectorAll('.day-cell').forEach(cell => {
+                    // Explicitly set background and text colors based on their classes
+                    const dayNumber = cell.querySelector('.day-number');
+                    const shiftInfo = cell.querySelector('.shift-info');
+
+                    if (cell.classList.contains('empty-cell')) {
+                        cell.style.backgroundColor = currentTheme === 'dark' ? '#2d3748' : '#f3f4f6';
+                    } else if (cell.classList.contains('is-holiday-cell')) {
+                        cell.style.backgroundColor = '#ef4444'; // Red for holidays
+                        if (dayNumber) dayNumber.style.color = '#fff';
+                        if (shiftInfo) {
+                            shiftInfo.style.backgroundColor = 'transparent';
+                            shiftInfo.style.color = '#fff';
+                            shiftInfo.style.border = '1px solid rgba(255,255,255,0.5)';
+                        }
+                    } else {
+                        cell.style.backgroundColor = currentTheme === 'dark' ? '#4a5568' : '#ffffff';
+                        if (dayNumber) dayNumber.style.color = currentTheme === 'dark' ? '#f7fafc' : '#4b5563';
+                        if (shiftInfo) {
+                            // Re-apply specific shift colors
+                            if (shiftInfo.classList.contains('shift-E01')) shiftInfo.style.backgroundColor = '#22c55e';
+                            else if (shiftInfo.classList.contains('shift-A03')) shiftInfo.style.backgroundColor = '#3b82f6';
+                            else if (shiftInfo.classList.contains('shift-A01')) shiftInfo.style.backgroundColor = '#f97316';
+                            else if (shiftInfo.classList.contains('shift-พักร้อน')) {
+                                shiftInfo.style.backgroundColor = '#d1d5db';
+                                shiftInfo.style.color = '#374151';
+                            }
+                            else if (shiftInfo.classList.contains('shift-J01') || shiftInfo.classList.contains('shift-C01') || shiftInfo.classList.contains('shift-B02')) {
+                                shiftInfo.style.backgroundColor = '#9ca3af';
+                                shiftInfo.style.color = '#fff';
+                            }
+                            else if (shiftInfo.classList.contains('shift-SICK')) {
+                                shiftInfo.style.backgroundColor = '#fca5a5';
+                                shiftInfo.style.color = '#b91c1c';
+                            }
+                            else if (shiftInfo.classList.contains('shift-ยักษ์') || shiftInfo.classList.contains('shift-ลาคลอด')) {
+                                shiftInfo.style.backgroundColor = '#60a5fa';
+                                shiftInfo.style.color = '#fff';
+                            }
+                            else {
+                                shiftInfo.style.backgroundColor = ''; // Reset if no specific color
+                                shiftInfo.style.color = '';
+                            }
+                        }
+                    }
+                });
+
+
+                tempDownloadContainer.appendChild(calendarGridClone);
+                document.body.appendChild(tempDownloadContainer);
+
+                try {
+                    const canvas = await html2canvas(tempDownloadContainer, {
+                        scale: 2, // Increase scale for better resolution
+                        logging: false,
+                        useCORS: true,
+                        backgroundColor: tempDownloadContainer.style.backgroundColor // Ensure background for capture
+                    });
+
+                    const imageDataURL = canvas.toDataURL('image/png');
                     const link = document.createElement('a');
                     link.href = imageDataURL;
-                    link.download = `working_calendar_${employeeNameHeader.textContent.replace(/[^a-zA-Z0-9_]/g, '')}_กรกฎาคม_2568.png`;
+                    link.download = `${translations[currentLanguage].mainTitle.replace(/\s/g, '_')}_${currentDisplayedEmployee['ชื่อ-นามสกุล'].replace(/\s/g, '_')}_กรกฎาคม_2568.png`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
 
-                    // Remove loading message
                     const existingOverlay = document.querySelector('.overlay');
                     if (existingOverlay) existingOverlay.remove();
                     showMessage(translations[currentLanguage].downloadSuccess, 'info');
 
-                }).catch(error => {
+                } catch (error) {
                     console.error('Error generating image:', error);
                     const existingOverlay = document.querySelector('.overlay');
                     if (existingOverlay) existingOverlay.remove();
                     showMessage(`${translations[currentLanguage].errorGeneratingImage} ${error.message}`, 'error');
-                });
-            });
+                } finally {
+                    tempDownloadContainer.remove(); // Always remove the temporary container
+                }
+            }
+
+            // Event listener for download button
+            downloadButton.addEventListener('click', generateCalendarImage); // Call the new function
 
             // Language toggle event listener
             langToggleButton.addEventListener('click', () => {
