@@ -389,13 +389,8 @@
                     shiftSick: "Sick Leave (SICK)",
                     shiftSpecial: "Special Shift (Yak, Maternity)",
                     calendarSectionTitle: "Daily Shift Details:",
-                    daySun: "Sun",
-                    dayMon: "Mon",
-                    dayTue: "Tue",
-                    dayWed: "Wed",
-                    dayThu: "Thu",
-                    dayFri: "Fri",
-                    daySat: "Sat",
+                    daySun: "Sun", dayMon: "Mon", dayTue: "Tue", dayWed: "Wed", dayThu: "Thu", dayFri: "Fri", daySat: "Sat",
+                    daySunAbbr: "S", dayMonAbbr: "M", dayTueAbbr: "T", dayWedAbbr: "W", dayThuAbbr: "T", dayFriAbbr: "F", daySatAbbr: "S",
                     downloadButton: "Download Calendar Image",
                     themeToggle: "Dark Mode",
                     langToggle: "TH", // Text for the language toggle button
@@ -439,13 +434,8 @@
                     shiftSick: "ลาป่วย (SICK)",
                     shiftSpecial: "กะพิเศษ (ยักษ์, ลาคลอด)",
                     calendarSectionTitle: "รายละเอียดกะงานประจำวัน:",
-                    daySun: "อาทิตย์",
-                    dayMon: "จันทร์",
-                    dayTue: "อังคาร",
-                    dayWed: "พุธ",
-                    dayThu: "พฤหัสบดี",
-                    dayFri: "ศุกร์",
-                    daySat: "เสาร์",
+                    daySun: "อาทิตย์", dayMon: "จันทร์", dayTue: "อังคาร", dayWed: "พุธ", dayThu: "พฤหัสบดี", dayFri: "ศุกร์", daySat: "เสาร์",
+                    daySunAbbr: "อา", dayMonAbbr: "จ", dayTueAbbr: "อ", dayWedAbbr: "พ", dayThuAbbr: "พฤ", dayFriAbbr: "ศ", daySatAbbr: "ส",
                     downloadButton: "ดาวน์โหลดรูปภาพปฏิทิน",
                     themeToggle: "โหมดมืด",
                     langToggle: "EN", // Text for the language toggle button
@@ -496,6 +486,9 @@
                 // Update language toggle button text
                 langToggleButton.textContent = translations[lang].langToggle;
 
+                // Update day headers based on screen size and language
+                updateDayHeaders();
+
                 // Re-render current employee info and calendar to apply language to dynamic content
                 const currentNickname = nicknameSearchInput.value.toLowerCase().trim();
                 if (currentNickname && allEmployeesData.length > 0) {
@@ -511,6 +504,20 @@
                         calendarLoadingIndicator.textContent = translations[lang].initialCalendarPrompt;
                     }
                 }
+            }
+
+            // Function to update day headers based on screen width
+            function updateDayHeaders() {
+                const isSmallScreen = window.innerWidth < 640; // Tailwind's 'sm' breakpoint
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                days.forEach(day => {
+                    const fullKey = `day${day}`;
+                    const abbrKey = `${fullKey}Abbr`;
+                    const element = document.querySelector(`[data-key="${fullKey}"]`);
+                    if (element) {
+                        element.textContent = isSmallScreen ? translations[currentLanguage][abbrKey] : translations[currentLanguage][fullKey];
+                    }
+                });
             }
 
             // Function to apply theme (light/dark)
@@ -600,6 +607,9 @@
                     <div class="text-center font-bold text-gray-600 py-2" data-key="dayFri">${translations[currentLanguage].dayFri}</div>
                     <div class="text-center font-bold text-gray-600 py-2" data-key="daySat">${translations[currentLanguage].daySat}</div>
                 `;
+                // Ensure day headers are updated after clearing and re-adding
+                updateDayHeaders();
+
 
                 if (!employeeData || !employeeData['ชื่อ-นามสกุล']) {
                     employeeInfoDiv.innerHTML = `<div class="col-span-full text-center text-red-500 p-4">${translations[currentLanguage].employeeInfoNotFound}</div>`;
@@ -868,6 +878,9 @@
             applyLanguage(currentLanguage);
             applyTheme(currentTheme);
             fetchAllScheduleData();
+
+            // Add resize listener for day headers
+            window.addEventListener('resize', updateDayHeaders);
         });
     </script>
 </body>
